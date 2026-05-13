@@ -1,0 +1,83 @@
+﻿<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Sentinel — Dashboard</title>
+  <link rel="stylesheet" href="/style.css" />
+</head>
+<body>
+  <header>
+    <div class="brand">
+      <span class="logo">MCP</span><span class="logo-strong">Guard</span>
+      <span class="subtle">runtime security for AI tool calls</span>
+    </div>
+    <div class="meta">
+      <span id="audit-path" title="audit DB"></span>
+      <span class="dot" id="live-indicator"></span>
+      <span id="live-label">live</span>
+    </div>
+  </header>
+
+  <section class="stats">
+    <div class="stat"><div class="stat-num" id="stat-total">—</div><div class="stat-label">total events</div></div>
+    <div class="stat"><div class="stat-num" id="stat-24h">—</div><div class="stat-label">last 24h</div></div>
+    <div class="stat stat-blocked"><div class="stat-num" id="stat-blocked">—</div><div class="stat-label">blocked</div></div>
+    <div class="stat"><div class="stat-num" id="stat-sessions">—</div><div class="stat-label">sessions (24h)</div></div>
+  </section>
+
+  <section class="pending-approvals" id="pending-section" style="display:none">
+    <h2>Pending approvals</h2>
+    <div id="pending-list"></div>
+  </section>
+
+  <section class="auto-decisions" id="auto-section" style="display:none">
+    <h2>Standing rules</h2>
+    <p class="hint" style="margin-top:0">Approve/deny decisions you've asked sentinel to remember. New tool calls that match these will be decided automatically.</p>
+    <div id="auto-list"></div>
+  </section>
+
+  <section class="recent-blocked" id="recent-blocked-section" style="display:none">
+    <h2>Recent blocks</h2>
+    <ul id="recent-blocked-list"></ul>
+  </section>
+
+  <section class="events">
+    <h2>
+      Activity
+      <span class="refresh-info"><label><input type="checkbox" id="autorefresh" checked /> auto-refresh</label></span>
+    </h2>
+    <table id="events-table">
+      <thead>
+        <tr>
+          <th>Time</th>
+          <th>Dir</th>
+          <th>Type</th>
+          <th>Method / Tool</th>
+          <th>Session</th>
+          <th>Upstream</th>
+          <th>Status</th>
+          <th>Size</th>
+        </tr>
+      </thead>
+      <tbody id="events-tbody"></tbody>
+    </table>
+    <p class="hint">Click any row for the full JSON-RPC payload.</p>
+  </section>
+
+  <div id="detail-modal" class="modal" style="display:none">
+    <div class="modal-inner">
+      <div class="modal-head">
+        <h3 id="detail-title">Event</h3>
+        <button id="detail-close" aria-label="close">×</button>
+      </div>
+      <div class="modal-body">
+        <dl id="detail-meta"></dl>
+        <pre id="detail-payload"></pre>
+      </div>
+    </div>
+  </div>
+
+  <script src="/app.js"></script>
+</body>
+</html>
