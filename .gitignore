@@ -1,0 +1,34 @@
+# Go build artifacts
+/bin/
+/dist/
+*.exe
+*.exe~
+*.test
+*.out
+# (Do not list bare "sentinel" or "sentinel.exe" here — gitignore treats bare
+# names as path-anywhere matches, which silently excludes cmd/sentinel/.)
+
+# Local state
+*.db
+*.db-journal
+*.db-wal
+*.db-shm
+
+# IDE
+.vscode/
+.idea/
+*.swp
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Local config / scratch
+sentinel.local.yaml
+/scratch/
+
+# Tool / IDE local state
+.claude/settings.local.json
+
+*.png
+!sentinel-banner.png

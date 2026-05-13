@@ -1,0 +1,288 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Sentinel Central</title>
+  <link rel="stylesheet" href="/style.css" />
+</head>
+<body>
+  <header>
+    <div class="brand">
+      <span class="logo">Senti</span><span class="logo-strong">nel</span>
+      <span class="badge-central">central</span>
+      <span class="subtle">multi-agent fleet dashboard</span>
+    </div>
+    <div class="meta">
+      <span id="admin-status" class="admin-status" title="set admin token to enable writes"></span>
+      <button id="admin-config" class="btn-ghost" title="configure admin token">admin token</button>
+      <span class="dot" id="live-indicator"></span>
+      <span id="live-label">live</span>
+    </div>
+  </header>
+
+  <section class="stats">
+    <div class="stat"><div class="stat-num" id="stat-total">—</div><div class="stat-label">total events</div></div>
+    <div class="stat"><div class="stat-num" id="stat-24h">—</div><div class="stat-label">last 24h</div></div>
+    <div class="stat stat-blocked"><div class="stat-num" id="stat-blocked">—</div><div class="stat-label">blocked</div></div>
+    <div class="stat"><div class="stat-num" id="stat-agents">—</div><div class="stat-label">agents</div></div>
+  </section>
+
+  <section class="policy">
+    <h2>
+      Policy
+      <span class="section-actions">
+        <span id="policy-meta" class="policy-meta"></span>
+        <button id="policy-save" class="btn btn-approve" disabled>Save</button>
+      </span>
+    </h2>
+    <p class="hint">
+      Distributed to every connected agent. <b>Stricter wins:</b> a deny path
+      added here applies even if the agent's local <code>sentinel.yaml</code>
+      doesn't mention it. Lower thresholds win. Local policy can ADD
+      restrictions but cannot remove these.
+    </p>
+    <textarea id="policy-body" spellcheck="false" rows="12"></textarea>
+    <div id="policy-error" class="form-error" style="display:none"></div>
+  </section>
+
+  <section class="enrollments" id="enrollments-section" style="display:none">
+    <h2>Outstanding enrollments</h2>
+    <table id="enrollments-table">
+      <thead>
+        <tr>
+          <th>ID</th>
+          <th>Name</th>
+          <th>Expires</th>
+          <th>Status</th>
+          <th class="col-actions">Actions</th>
+        </tr>
+      </thead>
+      <tbody id="enrollments-tbody"></tbody>
+    </table>
+    <p class="hint">Outstanding enrollments are single-use links you've handed out. Consumed entries show the resulting agent.</p>
+  </section>
+
+  <section class="agents">
+    <h2>
+      Agents
+      <span class="section-actions">
+        <button id="agent-enroll" class="btn btn-approve" title="Generate a one-time enrollment URL for an employee laptop">+ Enroll agent</button>
+        <button id="agent-add" class="btn" title="Create an agent with a directly-shared bearer token">+ Add agent</button>
+      </span>
+    </h2>
+    <table id="agents-table">
+      <thead>
+        <tr>
+          <th>ID</th>
+          <th>Name</th>
+          <th>Last seen</th>
+          <th>Created</th>
+          <th>Metadata</th>
+          <th class="col-actions">Actions</th>
+        </tr>
+      </thead>
+      <tbody id="agents-tbody"></tbody>
+    </table>
+    <p class="hint" id="agents-empty" style="display:none">No agents yet. Use <b>Enroll agent</b> to generate a one-command setup link.</p>
+  </section>
+
+  <section class="sessions">
+    <h2>Sessions</h2>
+    <table id="sessions-table">
+      <thead>
+        <tr>
+          <th>ID</th>
+          <th>Agent</th>
+          <th>Started</th>
+          <th>Duration</th>
+          <th>Events</th>
+          <th>Blocked</th>
+          <th>Upstream(s)</th>
+        </tr>
+      </thead>
+      <tbody id="sessions-tbody"></tbody>
+    </table>
+    <p class="hint" id="sessions-empty" style="display:none">No sessions yet for the current filter.</p>
+  </section>
+
+  <section class="events">
+    <h2>
+      <span id="events-title">Activity</span>
+      <span class="section-actions">
+        <span class="search-wrap">
+          <input id="search-input" type="search" placeholder="search payloads…" autocomplete="off" />
+          <button id="search-clear" class="btn-ghost" title="clear search">×</button>
+        </span>
+        <label class="refresh-info"><input type="checkbox" id="autorefresh" checked /> auto-refresh</label>
+      </span>
+    </h2>
+    <div id="filters-bar" class="filters-bar"></div>
+    <table id="events-table">
+      <thead>
+        <tr>
+          <th>Time</th>
+          <th>Agent</th>
+          <th>Dir</th>
+          <th>Type</th>
+          <th>Method / Tool</th>
+          <th>Session</th>
+          <th>Upstream</th>
+          <th>Status</th>
+          <th>Size</th>
+        </tr>
+      </thead>
+      <tbody id="events-tbody"></tbody>
+    </table>
+    <p class="hint">Click any row for the full JSON-RPC payload.</p>
+  </section>
+
+  <!-- Event detail modal -->
+  <div id="detail-modal" class="modal" style="display:none">
+    <div class="modal-inner">
+      <div class="modal-head">
+        <h3 id="detail-title">Event</h3>
+        <button class="modal-close" data-modal="detail-modal" aria-label="close">×</button>
+      </div>
+      <div class="modal-body">
+        <dl id="detail-meta"></dl>
+        <pre id="detail-payload"></pre>
+      </div>
+    </div>
+  </div>
+
+  <!-- Add agent modal -->
+  <div id="add-modal" class="modal" style="display:none">
+    <div class="modal-inner">
+      <div class="modal-head">
+        <h3>Register agent</h3>
+        <button class="modal-close" data-modal="add-modal" aria-label="close">×</button>
+      </div>
+      <form class="modal-body" id="add-form">
+        <label class="form-row">
+          <span>Name</span>
+          <input id="add-name" type="text" required placeholder="alice-laptop" autocomplete="off" />
+        </label>
+        <label class="form-row">
+          <span>Metadata (key=value, comma-separated, optional)</span>
+          <input id="add-meta" type="text" placeholder="os=macos,owner=alice" autocomplete="off" />
+        </label>
+        <p class="form-hint">If the server has <code>SENTINEL_ADMIN_TOKEN</code> set, configure the admin token (top-right) before creating agents.</p>
+        <div class="form-actions">
+          <button type="button" class="btn" data-modal-close="add-modal">Cancel</button>
+          <button type="submit" class="btn btn-approve">Create</button>
+        </div>
+        <div id="add-error" class="form-error" style="display:none"></div>
+      </form>
+    </div>
+  </div>
+
+  <!-- Token reveal modal (shown once after create) -->
+  <div id="token-modal" class="modal" style="display:none">
+    <div class="modal-inner">
+      <div class="modal-head">
+        <h3>Agent registered</h3>
+        <button class="modal-close" data-modal="token-modal" aria-label="close">×</button>
+      </div>
+      <div class="modal-body">
+        <p>Bearer token — <b>save this now</b>; it will not be shown again.</p>
+        <div class="token-box">
+          <code id="token-value"></code>
+          <button id="token-copy" class="btn">Copy</button>
+        </div>
+        <p class="hint">Put it in the agent's <code>sentinel.yaml</code>:</p>
+        <pre id="token-yaml"></pre>
+        <div class="form-actions">
+          <button type="button" class="btn" data-modal-close="token-modal">Done</button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Enroll-agent modal -->
+  <div id="enroll-modal" class="modal" style="display:none">
+    <div class="modal-inner">
+      <div class="modal-head">
+        <h3>Enroll agent</h3>
+        <button class="modal-close" data-modal="enroll-modal" aria-label="close">×</button>
+      </div>
+      <form class="modal-body" id="enroll-form">
+        <p class="form-hint">
+          Generates a single-use URL the employee runs once on their laptop.
+          The URL exchanges for a bearer token; no token is shared by hand.
+        </p>
+        <label class="form-row">
+          <span>Agent name</span>
+          <input id="enroll-name" type="text" required placeholder="alice-laptop" autocomplete="off" />
+        </label>
+        <label class="form-row">
+          <span>Metadata (key=value, comma-separated, optional)</span>
+          <input id="enroll-meta" type="text" placeholder="owner=alice,team=eng" autocomplete="off" />
+        </label>
+        <label class="form-row">
+          <span>Expires after (hours)</span>
+          <input id="enroll-ttl" type="number" min="1" max="720" value="24" />
+        </label>
+        <p class="form-hint">If the server has <code>SENTINEL_ADMIN_TOKEN</code> set, configure the admin token (top-right) before enrolling.</p>
+        <div class="form-actions">
+          <button type="button" class="btn" data-modal-close="enroll-modal">Cancel</button>
+          <button type="submit" class="btn btn-approve">Generate URL</button>
+        </div>
+        <div id="enroll-error" class="form-error" style="display:none"></div>
+      </form>
+    </div>
+  </div>
+
+  <!-- Enrollment URL reveal modal -->
+  <div id="enroll-url-modal" class="modal" style="display:none">
+    <div class="modal-inner">
+      <div class="modal-head">
+        <h3>Enrollment URL</h3>
+        <button class="modal-close" data-modal="enroll-url-modal" aria-label="close">×</button>
+      </div>
+      <div class="modal-body">
+        <p>Send the employee this <b>single command</b>:</p>
+        <div class="token-box">
+          <code id="enroll-url-command"></code>
+          <button id="enroll-url-copy" class="btn">Copy</button>
+        </div>
+        <p class="hint">
+          The URL is <b>single-use</b> and expires at
+          <span id="enroll-url-expires" class="agent-name"></span>. If it leaks before the employee uses it,
+          revoke it from the Outstanding enrollments list.
+        </p>
+        <pre id="enroll-url-note"></pre>
+        <div class="form-actions">
+          <button type="button" class="btn" data-modal-close="enroll-url-modal">Done</button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Admin token config modal -->
+  <div id="admin-modal" class="modal" style="display:none">
+    <div class="modal-inner">
+      <div class="modal-head">
+        <h3>Admin token</h3>
+        <button class="modal-close" data-modal="admin-modal" aria-label="close">×</button>
+      </div>
+      <form class="modal-body" id="admin-form">
+        <p class="hint">
+          Required only if the server was started with <code>SENTINEL_ADMIN_TOKEN</code>.
+          Stored in this tab's <code>sessionStorage</code> — cleared when you close the tab.
+        </p>
+        <label class="form-row">
+          <span>Token</span>
+          <input id="admin-input" type="password" autocomplete="off" />
+        </label>
+        <div class="form-actions">
+          <button type="button" class="btn" id="admin-clear">Clear</button>
+          <button type="submit" class="btn btn-approve">Save</button>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <script src="/app.js"></script>
+</body>
+</html>
